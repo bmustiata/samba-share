@@ -5,7 +5,7 @@ MAINTAINER	Bogdan Mustiata <bogdan.mustiata@gmail.com> github.com/bmst @bmst
 RUN		apt-get update && \
 			apt-get -o "Acquire::Retries=10" install -yq samba gettext
 
-ENV     TARGET_IP ""
+ENV     STATIC_IP ""
 
 ADD		run.sh /run.sh
 ADD		setup-samba-share.sh /setup-samba-share.sh

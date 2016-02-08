@@ -98,7 +98,7 @@ docker_host_execute "USERID=\"$USERID\""
 docker_host_execute "GROUP=\"$GROUP\""
 docker_host_execute "READONLY=\"$READONLY\""
 docker_host_execute "RUN_ARGUMENTS=\"$RUN_ARGUMENTS\""
-docker_host_execute "TARGET_IP=\"$TARGET_IP\""
+docker_host_execute "STATIC_IP=\"$STATIC_IP\""
 
 # define function for sh instead of a string for better syntax highlighting
 execute_in_sh() {
@@ -167,13 +167,13 @@ execute_in_sh() {
 	# from here we should pass the work off to the real samba container
 	# I'm running this in the background rather than using run -d, so that --rm will still work
     {
-    echo "IP: ${TARGET_IP}"
+    echo "IP: ${STATIC_IP}"
 
     $DOCKER run --rm --label "$server_container_label"				\
-			--expose 137 -p ${TARGET_IP}:137:137 						\
-			--expose 138 -p ${TARGET_IP}:138:138 						\
-			--expose 139 -p ${TARGET_IP}:139:139 						\
-			--expose 445 -p ${TARGET_IP}:445:445 						\
+			--expose 137 -p ${STATIC_IP}:137:137 						\
+			--expose 138 -p ${STATIC_IP}:138:138 						\
+			--expose 139 -p ${STATIC_IP}:139:139 						\
+			--expose 445 -p ${STATIC_IP}:445:445 						\
 			-e USER -e PASSWORD -e USERID -e GROUP -e READONLY			\
 			$RUN_ARGUMENTS								\
 			--volumes-from "$container" 						\
@@ -194,12 +194,12 @@ execute_in_sh() {
 	server_container_name=`docker inspect --format '{{.Name}}' $server_container_id | grep -o -E '[^/].*'`
 	ips="`docker inspect --format '    {{ .NetworkSettings.IPAddress }}' "$server_container_id"`"
 
-    if [ -n "${TARGET_IP}" ]
+    if [ -n "${STATIC_IP}" ]
     then
-        echo "TARGET_IP is '$TARGET_IP'"
-        example_ip="$TARGET_IP"
+        echo "STATIC_IP is '$STATIC_IP'"
+        example_ip="$STATIC_IP"
     else
-        echo "No TARGET_IP environment variable defined."
+        echo "No STATIC_IP environment variable defined."
         example_ip="`echo "$ips" | head -n1 | grep -o -E '\S+'`"
     fi
 
