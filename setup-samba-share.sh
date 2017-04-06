@@ -78,16 +78,19 @@ fi
 #   https://github.com/docker/docker/issues/17691#issuecomment-165269707
 # using labels instead
 server_container_label="samba-server-${container}"
-
-server_container_ids() {
-	$DOCKER ps -qa --filter label="$server_container_label"
-}
 docker_host_execute "server_container_label=$server_container_label"
-declare -f server_container_ids
+
+sambaContainer=$(basename $(cat /proc/self/cpuset))
+
+echo 'server_container_ids() {'
+echo '	$DOCKER ps -qa --filter label="$server_container_label"'
+echo '}'
+echo 'declare -f server_container_ids'
 
 # create environment for sh
 docker_host_execute "container=$container"
-docker_host_execute "sambaContainer=`grep cpu[^a-zA-Z\d] /proc/1/cgroup | grep -oE '[0-9a-fA-F]{64}'`"
+docker_host_execute "sambaContainer=$sambaContainer"
+
 # It could be that parameters were passed as
 #   docker run -e USER=... bmst/samba-share \"$container\" | sh
 # We set them like this so they must be named explicitely and
@@ -98,7 +101,13 @@ docker_host_execute "USERID=\"$USERID\""
 docker_host_execute "GROUP=\"$GROUP\""
 docker_host_execute "READONLY=\"$READONLY\""
 docker_host_execute "RUN_ARGUMENTS=\"$RUN_ARGUMENTS\""
-docker_host_execute "STATIC_IP=\"$STATIC_IP\""
+
+if [[ "$STATIC_IP" == "" ]]; then
+    echo "echo STATIC_IP not set, detecting."
+    docker_host_execute 'STATIC_IP="$(hostname -I | cut -f1 -d\ )"'
+else # not [[ "$STATIC_IP" == "" ]]
+    docker_host_execute "STATIC_IP=\"$STATIC_IP\""
+fi   # else [[ "$STATIC_IP" == "" ]]
 
 # define function for sh instead of a string for better syntax highlighting
 execute_in_sh() {
@@ -187,21 +196,14 @@ execute_in_sh() {
 	# give advice
 	#   http://stackoverflow.com/a/20686101
 	server_container_id=$(server_container_ids | head -n1)
+    echo "COntainer IDs: $(server_container_ids)"
 
     echo "label: $server_container_label"
 
     echo "inspecting for name container $server_container_id, obtained from `server_container_ids`"
 	server_container_name=`docker inspect --format '{{.Name}}' $server_container_id | grep -o -E '[^/].*'`
-	ips="`docker inspect --format '    {{ .NetworkSettings.IPAddress }}' "$server_container_id"`"
 
-    if [ -n "${STATIC_IP}" ]
-    then
-        echo "STATIC_IP is '$STATIC_IP'"
-        example_ip="$STATIC_IP"
-    else
-        echo "No STATIC_IP environment variable defined."
-        example_ip="`echo "$ips" | head -n1 | grep -o -E '\S+'`"
-    fi
+    example_ip="$STATIC_IP"
 
 	example_volume=`echo "$volumes" | head -n1`
 	example_volume_name=`volume_name_of "$example_volume"`
@@ -228,7 +230,7 @@ execute_in_sh() {
 	echo	 "    Log in as Guest - no password"
 	echo	 ""
 	echo	 "Ip addresses: "
-	echo	 "$ips"
+	echo	 "$(hostname -I)"
 	echo	 ""
 	exit 0
 }
